@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "GWD Counter Extractor",
+  "version": "1.0",
+  "description": "Extract gwd-counter elements from Google Web Designer HTML code",
+  "permissions": ["activeTab", "scripting", "storage", "notifications"],
+  "host_permissions": ["http://localhost:*/*", "https://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GWD Counter Extractor",
+    "default_icon": {}
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {},
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

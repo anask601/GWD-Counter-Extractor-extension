@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GWD Counter Extractor</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <button class="help-button" id="helpBtn" title="How to use">❓</button>
+        <h1>🔍 GWD Counter Extractor</h1>
+        <p>Extract gwd-counter elements from Google Web Designer</p>
+      </div>
+
+      <div class="main-content">
+        <div class="url-section">
+          <div class="current-url" id="currentUrl">
+            <span class="url-label">Current URL:</span>
+            <span class="url-value" id="urlValue">Loading...</span>
+          </div>
+
+          <div class="button-group">
+            <button class="navigate-btn" id="navigateBtn">
+              🔗 Navigate to Index
+            </button>
+            <button class="extract-btn" id="extractBtn">
+              🔍 Extract Counters
+            </button>
+          </div>
+        </div>
+
+        <div class="status-section">
+          <div
+            class="success-message"
+            id="successMessage"
+            style="display: none"
+          >
+            ✅ Successfully extracted counters!
+          </div>
+
+          <div class="error-message" id="errorMessage" style="display: none">
+            ❌ No gwd-counter elements found
+          </div>
+
+          <div class="nan-warning" id="nanWarning" style="display: none">
+            ⚠️ <strong>Warning:</strong> Found counters with "NaN" values!
+          </div>
+
+          <div class="counter-info" id="counterInfo" style="display: none">
+            <div class="counter-count" id="counterCount">Found 0 counters</div>
+          </div>
+        </div>
+
+        <div class="output-section">
+          <div class="output-header">
+            <label for="outputArea">Extracted Counters:</label>
+            <button class="copy-btn" id="copyBtn" disabled>📋 Copy</button>
+          </div>
+          <div id="outputArea" class="counter-output">
+            Extracted gwd-counter elements will appear here...
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="clear-btn" id="clearBtn">🗑️ Clear All</button>
+          <button class="refresh-btn" id="refreshBtn">🔄 Refresh Page</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>🔍 How to Use</h2>
+          <button class="modal-close" id="modalClose">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="step">
+            <h3><span class="step-number">1</span>Navigate to GWD Preview</h3>
+            <p>
+              Open your Google Web Designer project preview URL (usually ends
+              with /preview.html)
+            </p>
+          </div>
+
+          <div class="step">
+            <h3><span class="step-number">2</span>Switch to Index Page</h3>
+            <p>
+              Click "🔗 Navigate to Index" to automatically change from
+              preview.html to index.html
+            </p>
+          </div>
+
+          <div class="step">
+            <h3><span class="step-number">3</span>Extract Counters</h3>
+            <p>
+              Click "🔍 Extract Counters" to scan the page for gwd-counter
+              elements
+            </p>
+          </div>
+
+          <div class="step">
+            <h3><span class="step-number">4</span>Copy Results</h3>
+            <p>
+              Use "📋 Copy" to copy all extracted counter elements to your
+              clipboard
+            </p>
+          </div>
+
+          <div class="tips">
+            <h4>💡 Tips</h4>
+            <ul>
+              <li>
+                ⚠️ Yellow warnings indicate NaN values that may cause tracking
+                issues
+              </li>
+              <li>
+                🔄 Use "Refresh Page" if the content doesn't load properly
+              </li>
+              <li>📱 Extension works on any localhost port</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
