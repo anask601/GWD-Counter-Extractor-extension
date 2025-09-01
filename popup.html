@@ -23,7 +23,7 @@
 
           <div class="button-group">
             <button class="navigate-btn" id="navigateBtn">
-              🔗 Navigate to Index
+              📋 Copy Index URL
             </button>
             <button class="extract-btn" id="extractBtn">
               🔍 Extract Counters
@@ -65,7 +65,6 @@
 
         <div class="actions">
           <button class="clear-btn" id="clearBtn">🗑️ Clear All</button>
-          <button class="refresh-btn" id="refreshBtn">🔄 Refresh Page</button>
         </div>
       </div>
     </div>
@@ -79,34 +78,30 @@
         </div>
         <div class="modal-content">
           <div class="step">
-            <h3><span class="step-number">1</span>Navigate to GWD Preview</h3>
+            <h3><span class="step-number">1</span>Open GWD Page</h3>
             <p>
-              Open your Google Web Designer project preview URL (usually ends
-              with /preview.html)
+              Navigate to your Google Web Designer project page (preview.html or index.html)
             </p>
           </div>
 
           <div class="step">
-            <h3><span class="step-number">2</span>Switch to Index Page</h3>
+            <h3><span class="step-number">2</span>Copy Index URL (Optional)</h3>
             <p>
-              Click "🔗 Navigate to Index" to automatically change from
-              preview.html to index.html
+              If on preview.html, click "📋 Copy Index URL" to get the index.html URL, then navigate manually
             </p>
           </div>
 
           <div class="step">
             <h3><span class="step-number">3</span>Extract Counters</h3>
             <p>
-              Click "🔍 Extract Counters" to scan the page for gwd-counter
-              elements
+              Click "🔍 Extract Counters" to scan the page for gwd-counter elements
             </p>
           </div>
 
           <div class="step">
             <h3><span class="step-number">4</span>Copy Results</h3>
             <p>
-              Use "📋 Copy" to copy all extracted counter elements to your
-              clipboard
+              Use "📋 Copy" to copy all extracted counter elements to your clipboard
             </p>
           </div>
 
@@ -114,13 +109,13 @@
             <h4>💡 Tips</h4>
             <ul>
               <li>
-                ⚠️ Yellow warnings indicate NaN values that may cause tracking
-                issues
+                ⚠️ Yellow warnings indicate NaN values that may cause tracking issues
               </li>
               <li>
-                🔄 Use "Refresh Page" if the content doesn't load properly
+                🔗 Copy Index URL converts preview.html to index.html automatically
               </li>
-              <li>📱 Extension works on any localhost port</li>
+              <li>📱 Extension works on any localhost port or published GWD page</li>
+              <li>🔍 Extract works on both preview.html and index.html pages</li>
             </ul>
           </div>
         </div>

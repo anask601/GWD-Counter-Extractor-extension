@@ -15,7 +15,6 @@ class GWDExtractorPopup {
       extractBtn: document.getElementById("extractBtn"),
       copyBtn: document.getElementById("copyBtn"),
       clearBtn: document.getElementById("clearBtn"),
-      refreshBtn: document.getElementById("refreshBtn"),
       helpBtn: document.getElementById("helpBtn"),
       outputArea: document.getElementById("outputArea"),
       successMessage: document.getElementById("successMessage"),
@@ -29,8 +28,9 @@ class GWDExtractorPopup {
   }
 
   bindEvents() {
+    // Changed from navigation to copy URL functionality
     this.elements.navigateBtn.addEventListener("click", () =>
-      this.navigateToIndex()
+      this.copyIndexUrl()
     );
     this.elements.extractBtn.addEventListener("click", () =>
       this.extractCounters()
@@ -39,9 +39,6 @@ class GWDExtractorPopup {
       this.copyToClipboard()
     );
     this.elements.clearBtn.addEventListener("click", () => this.clearAll());
-    this.elements.refreshBtn.addEventListener("click", () =>
-      this.refreshPage()
-    );
     this.elements.helpBtn.addEventListener("click", () => this.openModal());
     this.elements.modalClose.addEventListener("click", () => this.closeModal());
     this.elements.modalOverlay.addEventListener("click", (e) => {
@@ -70,12 +67,14 @@ class GWDExtractorPopup {
       this.currentTab = tab;
       this.elements.urlValue.textContent = tab.url || "No URL available";
 
-      // Check if we're on a localhost URL
+      // Check if we're on a localhost URL and update button accordingly
       const isLocalhost = tab.url && tab.url.includes("localhost");
       this.elements.navigateBtn.disabled = !isLocalhost;
 
       if (!isLocalhost) {
         this.elements.navigateBtn.textContent = "🚫 Not on localhost";
+      } else {
+        this.elements.navigateBtn.textContent = "📋 Copy Index URL";
       }
     } catch (error) {
       console.error("Error loading current tab:", error);
@@ -84,31 +83,54 @@ class GWDExtractorPopup {
     }
   }
 
-  async navigateToIndex() {
-    if (!this.currentTab) return;
+  // Copy index.html URL instead of navigating
+  async copyIndexUrl() {
+    if (!this.currentTab) {
+      this.showMessage("error", "❌ No active tab found");
+      return;
+    }
 
     try {
       const currentUrl = this.currentTab.url;
-      const newUrl = currentUrl.replace("/preview.html", "/index.html");
+      let indexUrl;
 
-      if (currentUrl === newUrl) {
-        this.showMessage(
-          "info",
-          "Already on index.html or URL pattern not found"
-        );
-        return;
+      // Convert preview.html to index.html in the URL
+      if (currentUrl.includes("/preview.html")) {
+        indexUrl = currentUrl.replace("/preview.html", "/index.html");
+      } else if (currentUrl.includes("/preview")) {
+        indexUrl = currentUrl.replace("/preview", "/index.html");
+      } else {
+        // If not on preview, construct index URL from base
+        const url = new URL(currentUrl);
+        indexUrl = `${url.protocol}//${url.host}/index.html`;
       }
 
-      await chrome.tabs.update(this.currentTab.id, { url: newUrl });
+      // Copy the index URL to clipboard
+      await navigator.clipboard.writeText(indexUrl);
+      
+      this.showMessage("success", `✅ Index URL copied to clipboard: ${indexUrl}`);
 
-      // Wait a moment and reload tab info
-      setTimeout(() => {
-        this.loadCurrentTab();
-        this.showMessage("success", "✅ Navigated to index.html");
-      }, 1000);
     } catch (error) {
-      console.error("Navigation error:", error);
-      this.showMessage("error", "❌ Failed to navigate to index.html");
+      console.error("Copy URL error:", error);
+      
+      // Fallback method for copying
+      try {
+        const currentUrl = this.currentTab.url;
+        const indexUrl = currentUrl.includes("/preview.html") 
+          ? currentUrl.replace("/preview.html", "/index.html")
+          : currentUrl.replace("/preview", "/index.html");
+          
+        const textArea = document.createElement("textarea");
+        textArea.value = indexUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        
+        this.showMessage("success", `✅ Index URL copied: ${indexUrl}`);
+      } catch (fallbackError) {
+        this.showMessage("error", "❌ Failed to copy index URL");
+      }
     }
   }
 
@@ -320,10 +342,9 @@ class GWDExtractorPopup {
       this.extractedCounters.length
     } counter${this.extractedCounters.length !== 1 ? "s" : ""}`;
     this.elements.counterInfo.style.display = "block";
+    
     // Show NaN warning if any NaN values were detected
-    debugger;
     if (hasNaN) {
-      debugger;
       this.elements.nanWarning.style.display = "block";
 
       // Update warning message with exact styling
@@ -342,8 +363,7 @@ class GWDExtractorPopup {
 
     this.showMessage(
       "success",
-      `✅ Successfully extracted ${this.extractedCounters.length} gwd-counter elements!`,
-      hasNaN
+      `✅ Successfully extracted ${this.extractedCounters.length} gwd-counter elements!`
     );
   }
 
@@ -391,22 +411,7 @@ class GWDExtractorPopup {
     this.hideMessages();
   }
 
-  async refreshPage() {
-    if (!this.currentTab) return;
-
-    try {
-      await chrome.tabs.reload(this.currentTab.id);
-      setTimeout(() => {
-        this.loadCurrentTab();
-        this.showMessage("success", "✅ Page refreshed");
-      }, 1000);
-    } catch (error) {
-      console.error("Refresh error:", error);
-      this.showMessage("error", "❌ Failed to refresh page");
-    }
-  }
-
-  showMessage(type, message, isNaN = false) {
+  showMessage(type, message) {
     this.hideMessages();
 
     if (type === "success") {
@@ -421,9 +426,6 @@ class GWDExtractorPopup {
   hideMessages() {
     this.elements.successMessage.style.display = "none";
     this.elements.errorMessage.style.display = "none";
-    if (!isNaN) {
-      this.elements.nanWarning.style.display = "none";
-    }
   }
 
   openModal() {
