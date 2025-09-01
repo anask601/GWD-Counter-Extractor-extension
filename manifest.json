@@ -3,7 +3,7 @@
   "name": "GWD Counter Extractor",
   "version": "1.0",
   "description": "Extract gwd-counter elements from Google Web Designer HTML code",
-  "permissions": ["activeTab", "scripting", "storage", "notifications"],
+  "permissions": ["activeTab", "scripting"],
   "host_permissions": ["http://localhost:*/*", "https://*/*"],
   "action": {
     "default_popup": "popup.html",
