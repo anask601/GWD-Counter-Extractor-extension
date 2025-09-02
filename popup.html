@@ -11,7 +11,7 @@
       <div class="header">
         <button class="help-button" id="helpBtn" title="How to use">❓</button>
         <h1>🔍 GWD Counter Extractor</h1>
-        <p>Extract gwd-counter elements from Google Web Designer</p>
+        <p>Extract gwd-counter elements and analyze videos</p>
       </div>
 
       <div class="main-content">
@@ -29,6 +29,10 @@
               🔍 Extract Counters
             </button>
           </div>
+
+          <div class="button-group">
+            <button class="video-btn" id="videoBtn">🎬 Analyze Videos</button>
+          </div>
         </div>
 
         <div class="status-section">
@@ -37,7 +41,7 @@
             id="successMessage"
             style="display: none"
           >
-            ✅ Successfully extracted counters!
+            ✅ Successfully extracted data!
           </div>
 
           <div class="error-message" id="errorMessage" style="display: none">
@@ -51,6 +55,10 @@
           <div class="counter-info" id="counterInfo" style="display: none">
             <div class="counter-count" id="counterCount">Found 0 counters</div>
           </div>
+
+          <div class="success-message" id="videoInfo" style="display: none">
+            <div class="video-count" id="videoCount">Found 0 videos</div>
+          </div>
         </div>
 
         <div class="output-section">
@@ -60,6 +68,15 @@
           </div>
           <div id="outputArea" class="counter-output">
             Extracted gwd-counter elements will appear here...
+          </div>
+        </div>
+
+        <div class="output-section">
+          <div class="output-header">
+            <label for="videoOutput">Video Analysis:</label>
+          </div>
+          <div id="videoOutput" class="video-output">
+            Video analysis results will appear here...
           </div>
         </div>
 
@@ -80,42 +97,51 @@
           <div class="step">
             <h3><span class="step-number">1</span>Open GWD Page</h3>
             <p>
-              Navigate to your Google Web Designer project page (preview.html or index.html)
+              Navigate to your Google Web Designer project page (preview.html or
+              index.html)
             </p>
           </div>
 
           <div class="step">
             <h3><span class="step-number">2</span>Copy Index URL (Optional)</h3>
             <p>
-              If on preview.html, click "📋 Copy Index URL" to get the index.html URL, then navigate manually
+              If on preview.html, click "📋 Copy Index URL" to get the
+              index.html URL, then navigate manually
             </p>
           </div>
 
           <div class="step">
             <h3><span class="step-number">3</span>Extract Counters</h3>
             <p>
-              Click "🔍 Extract Counters" to scan the page for gwd-counter elements
+              Click "🔍 Extract Counters" for counter elements or "🎬 Analyze
+              Videos" for video information
             </p>
           </div>
 
           <div class="step">
             <h3><span class="step-number">4</span>Copy Results</h3>
-            <p>
-              Use "📋 Copy" to copy all extracted counter elements to your clipboard
-            </p>
+            <p>Use "📋 Copy" to copy both counters</p>
           </div>
 
           <div class="tips">
             <h4>💡 Tips</h4>
             <ul>
               <li>
-                ⚠️ Yellow warnings indicate NaN values that may cause tracking issues
+                ⚠️ Yellow warnings indicate NaN values that may cause tracking
+                issues
               </li>
               <li>
-                🔗 Copy Index URL converts preview.html to index.html automatically
+                🎬 Video analysis extracts URLs and durations from video/source
+                elements
               </li>
-              <li>📱 Extension works on any localhost port or published GWD page</li>
-              <li>🔍 Extract works on both preview.html and index.html pages</li>
+              <li>
+                🔗 Copy Index URL converts preview.html to index.html
+                automatically
+              </li>
+              <li>
+                📱 Extension works on any localhost port or published GWD page
+              </li>
+              <li>⌨️ Keyboard shortcut: Ctrl+Shift+V for video analysis</li>
             </ul>
           </div>
         </div>
