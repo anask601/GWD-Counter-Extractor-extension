@@ -61,6 +61,29 @@
           </div>
         </div>
 
+        <!-- Add this after the NaN warning div -->
+<div id="duplicateWarning" class="duplicate-warning" style="display: none;">
+  <span class="warning-icon">🔄</span>
+  <span class="warning-text">
+    <strong>Duplicates Detected!</strong>
+  </span>
+</div>
+
+<!-- Add this button in your button group section (after videoBtn) -->
+<button id="removeDuplicatesBtn" class="remove-duplicates-btn" disabled>
+  🗑️ Remove Duplicates
+</button>
+
+<!-- Add this after the videoInfo section -->
+<div id="duplicateInfo" class="duplicate-info" style="display: none;">
+  <div class="info-header">
+    <span class="info-icon">🔄</span>
+    <span id="duplicateCount" class="duplicate-count">0 duplicates</span>
+  </div>
+  <pre id="duplicateOutput" class="duplicate-output">Duplicate analysis will appear here...</pre>
+</div>
+
+
         <div class="output-section">
           <div class="output-header">
             <label for="outputArea">Extracted Counters:</label>
@@ -139,7 +162,7 @@
                 automatically
               </li>
               <li>
-                📱 Extension works on any localhost port or published GWD page
+                📱 Extension works on any localhost port
               </li>
               <li>⌨️ Keyboard shortcut: Ctrl+Shift+V for video analysis</li>
             </ul>

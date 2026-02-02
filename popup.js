@@ -4,6 +4,7 @@ class GWDExtractorPopup {
     this.currentTab = null;
     this.extractedCounters = [];
     this.videoInfo = [];
+    this.duplicateCounters = []; // Track duplicates
     this.initializeElements();
     this.bindEvents();
     this.loadCurrentTab();
@@ -18,22 +19,26 @@ class GWDExtractorPopup {
       copyBtn: document.getElementById("copyBtn"),
       clearBtn: document.getElementById("clearBtn"),
       helpBtn: document.getElementById("helpBtn"),
+      removeDuplicatesBtn: document.getElementById("removeDuplicatesBtn"),
       outputArea: document.getElementById("outputArea"),
       videoOutput: document.getElementById("videoOutput"),
+      duplicateOutput: document.getElementById("duplicateOutput"),
       successMessage: document.getElementById("successMessage"),
       errorMessage: document.getElementById("errorMessage"),
       nanWarning: document.getElementById("nanWarning"),
+      duplicateWarning: document.getElementById("duplicateWarning"),
       counterInfo: document.getElementById("counterInfo"),
       counterCount: document.getElementById("counterCount"),
       videoInfo: document.getElementById("videoInfo"),
       videoCount: document.getElementById("videoCount"),
+      duplicateInfo: document.getElementById("duplicateInfo"),
+      duplicateCount: document.getElementById("duplicateCount"),
       modalOverlay: document.getElementById("modalOverlay"),
       modalClose: document.getElementById("modalClose"),
     };
   }
 
   bindEvents() {
-    // Changed from navigation to copy URL functionality
     this.elements.navigateBtn.addEventListener("click", () =>
       this.copyIndexUrl()
     );
@@ -48,6 +53,14 @@ class GWDExtractorPopup {
     );
     this.elements.clearBtn.addEventListener("click", () => this.clearAll());
     this.elements.helpBtn.addEventListener("click", () => this.openModal());
+    
+    // Add remove duplicates button event listener if it exists
+    if (this.elements.removeDuplicatesBtn) {
+      this.elements.removeDuplicatesBtn.addEventListener("click", () =>
+        this.removeDuplicates()
+      );
+    }
+    
     this.elements.modalClose.addEventListener("click", () => this.closeModal());
     this.elements.modalOverlay.addEventListener("click", (e) => {
       if (e.target === this.elements.modalOverlay) {
@@ -78,7 +91,6 @@ class GWDExtractorPopup {
       this.currentTab = tab;
       this.elements.urlValue.textContent = tab.url || "No URL available";
 
-      // Check if we're on a localhost URL and update button accordingly
       const isLocalhost = tab.url && tab.url.includes("localhost");
       this.elements.navigateBtn.disabled = !isLocalhost;
 
@@ -94,7 +106,6 @@ class GWDExtractorPopup {
     }
   }
 
-  // Copy index.html URL instead of navigating
   async copyIndexUrl() {
     if (!this.currentTab) {
       this.showMessage("error", "❌ No active tab found");
@@ -105,18 +116,15 @@ class GWDExtractorPopup {
       const currentUrl = this.currentTab.url;
       let indexUrl;
 
-      // Convert preview.html to index.html in the URL
       if (currentUrl.includes("/preview.html")) {
         indexUrl = currentUrl.replace("/preview.html", "/index.html");
       } else if (currentUrl.includes("/preview")) {
         indexUrl = currentUrl.replace("/preview", "/index.html");
       } else {
-        // If not on preview, construct index URL from base
         const url = new URL(currentUrl);
         indexUrl = `${url.protocol}//${url.host}/index.html`;
       }
 
-      // Copy the index URL to clipboard
       await navigator.clipboard.writeText(indexUrl);
 
       this.showMessage(
@@ -126,7 +134,6 @@ class GWDExtractorPopup {
     } catch (error) {
       console.error("Copy URL error:", error);
 
-      // Fallback method for copying
       try {
         const currentUrl = this.currentTab.url;
         const indexUrl = currentUrl.includes("/preview.html")
@@ -156,36 +163,30 @@ class GWDExtractorPopup {
     try {
       this.showMessage("info", "🎬 Analyzing videos...");
 
-      // Inject content script to extract video information
       const results = await chrome.scripting.executeScript({
         target: { tabId: this.currentTab.id },
         function: () => {
           console.log("=== VIDEO EXTRACTION STARTED ===");
 
-          const videoData = [];
           const videoPromises = [];
 
           try {
-            // Find all video elements and source elements
             const videos = document.querySelectorAll("video");
             const sources = document.querySelectorAll("source");
             const videoUrls = new Set();
 
-            // Extract URLs from video elements
             videos.forEach((video, index) => {
               if (video.src) {
                 videoUrls.add(video.src);
                 console.log(`Video ${index + 1} src:`, video.src);
               }
 
-              // Check for currentSrc (actual playing source)
               if (video.currentSrc && video.currentSrc !== video.src) {
                 videoUrls.add(video.currentSrc);
                 console.log(`Video ${index + 1} currentSrc:`, video.currentSrc);
               }
             });
 
-            // Extract URLs from source elements
             sources.forEach((source, index) => {
               if (source.src) {
                 videoUrls.add(source.src);
@@ -193,11 +194,9 @@ class GWDExtractorPopup {
               }
             });
 
-            // Convert Set to Array for processing
             const uniqueUrls = Array.from(videoUrls);
             console.log("Unique video URLs found:", uniqueUrls);
 
-            // Create promises to load each video and get duration
             uniqueUrls.forEach((url, index) => {
               const promise = new Promise((resolve) => {
                 const tempVideo = document.createElement("video");
@@ -212,7 +211,7 @@ class GWDExtractorPopup {
                     status: "timeout",
                     index: index + 1,
                   });
-                }, 10000); // 10 second timeout
+                }, 10000);
 
                 tempVideo.onloadedmetadata = () => {
                   clearTimeout(timeout);
@@ -249,7 +248,6 @@ class GWDExtractorPopup {
               videoPromises.push(promise);
             });
 
-            // Wait for all videos to be processed (max 15 seconds total)
             return Promise.all(videoPromises).then((results) => {
               console.log("=== VIDEO ANALYSIS COMPLETE ===");
               console.log("Results:", results);
@@ -279,6 +277,18 @@ class GWDExtractorPopup {
 
       this.videoInfo = result.videos;
       this.displayVideoInfo();
+
+      if (this.extractedCounters.length > 0) {
+        this.processCountersForNaN();
+
+        const stillHasNaN = this.extractedCounters.some(
+          (counter) => counter.includes("_NaN") || counter.includes("_nan")
+        );
+        
+        // Re-detect duplicates after processing
+        this.detectDuplicates();
+        this.displayCounters(stillHasNaN, []);
+      }
     } catch (error) {
       console.error("Video extraction error:", error);
       this.showMessage(
@@ -291,21 +301,19 @@ class GWDExtractorPopup {
   displayVideoInfo() {
     let videoOutput = "=== VIDEO ANALYSIS RESULTS ===\n\n";
 
-    this.videoInfo.forEach((video, index) => {
+    this.videoInfo.forEach((video) => {
       videoOutput += `Video ${video.index}:\n`;
       videoOutput += `URL: ${video.url}\n`;
       videoOutput += `Duration: ${video.duration}\n`;
       videoOutput += `Status: ${video.status}\n`;
       if (video.durationSeconds) {
-        videoOutput += `Duration (seconds): ${video.durationSeconds.toFixed(
-          2
-        )}\n`;
+        videoOutput += `Duration (seconds): ${video.durationSeconds.toFixed(2)}\n`;
       }
+      videoOutput += "\n";
     });
 
     this.elements.videoOutput.textContent = videoOutput;
 
-    // Update video info
     const successCount = this.videoInfo.filter(
       (v) => v.status === "success"
     ).length;
@@ -338,16 +346,13 @@ class GWDExtractorPopup {
     }
 
     try {
-      // Inject content script to extract counters
       const results = await chrome.scripting.executeScript({
         target: { tabId: this.currentTab.id },
         function: () => {
-          // This function will be executed in the page context
           const counters = [];
-          const nanCounters = []; // Track counters with NaN values
+          const nanCounters = [];
 
           try {
-            // Helper function to check for NaN in attribute values
             function hasNaNValue(element) {
               const attributes = [
                 "name",
@@ -368,13 +373,11 @@ class GWDExtractorPopup {
               });
             }
 
-            // Method 1: Look for gwd-counter elements
             const gwdCounters = document.querySelectorAll("gwd-counter");
             gwdCounters.forEach((counter) => {
               const counterHTML = counter.outerHTML;
               counters.push(counterHTML);
 
-              // Check for NaN values
               if (
                 hasNaNValue(counter) ||
                 counterHTML.includes("NaN") ||
@@ -384,10 +387,8 @@ class GWDExtractorPopup {
               }
             });
 
-            // Method 2: Check body element for counter attributes
             const bodyElement = document.querySelector("body");
             if (bodyElement) {
-              // Look for counter-related attributes in body
               const attributes = ["name", "type", "duration", "increment"];
               const hasCounterAttrs = attributes.some((attr) =>
                 bodyElement.hasAttribute(attr)
@@ -398,7 +399,6 @@ class GWDExtractorPopup {
                   "name"
                 )}"`;
 
-                // Add other relevant attributes
                 attributes.slice(1).forEach((attr) => {
                   if (bodyElement.hasAttribute(attr)) {
                     counterHtml += ` ${attr}="${bodyElement.getAttribute(
@@ -410,7 +410,6 @@ class GWDExtractorPopup {
                 counterHtml += "></gwd-counter>";
                 counters.push(counterHtml);
 
-                // Check for NaN values in body element
                 if (
                   hasNaNValue(bodyElement) ||
                   counterHtml.includes("NaN") ||
@@ -421,7 +420,6 @@ class GWDExtractorPopup {
               }
             }
 
-            // Method 3: Look for any elements with counter-like names
             const elementsWithCounterAttrs = document.querySelectorAll(
               '[name*="counter"], [name*="vid"], [name*="cta"], [name*="isi"]'
             );
@@ -435,7 +433,6 @@ class GWDExtractorPopup {
                   const counterHtml = `<gwd-counter name="${name}"></gwd-counter>`;
                   counters.push(counterHtml);
 
-                  // Check for NaN values
                   if (
                     hasNaNValue(element) ||
                     name.includes("NaN") ||
@@ -447,7 +444,6 @@ class GWDExtractorPopup {
               }
             });
 
-            // Method 4: Scan entire DOM for elements that might have tracking attributes
             const allElements = document.querySelectorAll("*[name]");
             allElements.forEach((element) => {
               const name = element.getAttribute("name");
@@ -468,7 +464,6 @@ class GWDExtractorPopup {
                   name.includes("pct") ||
                   name.includes("length"))
               ) {
-                // Check if we already have this counter
                 const counterExists = counters.some((counter) =>
                   counter.includes(`name="${name}"`)
                 );
@@ -476,7 +471,6 @@ class GWDExtractorPopup {
                   const counterHtml = `<gwd-counter name="${name}"></gwd-counter>`;
                   counters.push(counterHtml);
 
-                  // Check for NaN values
                   if (
                     hasNaNValue(element) ||
                     name.includes("NaN") ||
@@ -520,7 +514,18 @@ class GWDExtractorPopup {
       }
 
       this.extractedCounters = result.counters;
-      this.displayCounters(result.hasNaN, result.nanCounters);
+
+      // Detect duplicates FIRST
+      this.detectDuplicates();
+
+      // Then process counters for NaN handling
+      this.processCountersForNaN();
+
+      const stillHasNaN = this.extractedCounters.some(
+        (counter) => counter.includes("_NaN") || counter.includes("_nan")
+      );
+
+      this.displayCounters(stillHasNaN, result.nanCounters);
     } catch (error) {
       console.error("Extraction error:", error);
       this.showMessage(
@@ -530,30 +535,260 @@ class GWDExtractorPopup {
     }
   }
 
+  detectDuplicates() {
+    const counterMap = new Map();
+    this.duplicateCounters = [];
+
+    // Count occurrences of each counter name
+    this.extractedCounters.forEach((counter) => {
+      const nameMatch = counter.match(/name="([^"]+)"/);
+      if (nameMatch) {
+        const name = nameMatch[1];
+        if (counterMap.has(name)) {
+          counterMap.set(name, counterMap.get(name) + 1);
+        } else {
+          counterMap.set(name, 1);
+        }
+      }
+    });
+
+    // Find duplicates
+    counterMap.forEach((count, name) => {
+      if (count > 1) {
+        this.duplicateCounters.push({
+          name: name,
+          count: count,
+        });
+      }
+    });
+
+    console.log("Duplicate counters detected:", this.duplicateCounters);
+
+    // Display duplicate information
+    this.displayDuplicates();
+  }
+
+  displayDuplicates() {
+    if (!this.elements.duplicateWarning || !this.elements.duplicateInfo) {
+      return; // Elements don't exist in HTML yet
+    }
+
+    if (this.duplicateCounters.length === 0) {
+      this.elements.duplicateWarning.style.display = "none";
+      this.elements.duplicateInfo.style.display = "none";
+      if (this.elements.removeDuplicatesBtn) {
+        this.elements.removeDuplicatesBtn.disabled = true;
+      }
+      return;
+    }
+
+    // Show duplicate warning
+    this.elements.duplicateWarning.style.display = "block";
+    this.elements.duplicateWarning.innerHTML = `
+      <span class="warning-icon">🔄</span>
+      <span class="warning-text">
+        <strong>Duplicates Detected:</strong> Found ${this.duplicateCounters.length} duplicate counter${this.duplicateCounters.length !== 1 ? 's' : ''}!
+      </span>
+    `;
+
+    // Show duplicate details
+    let duplicateOutput = "=== DUPLICATE COUNTERS ===\n\n";
+    this.duplicateCounters.forEach((dup) => {
+      duplicateOutput += `"${dup.name}" appears ${dup.count} times\n`;
+    });
+    duplicateOutput += "\n⚠ Duplicates may cause tracking issues!\n";
+
+    if (this.elements.duplicateOutput) {
+      this.elements.duplicateOutput.textContent = duplicateOutput;
+    }
+    
+    if (this.elements.duplicateCount) {
+      this.elements.duplicateCount.textContent = `${this.duplicateCounters.length} duplicate${this.duplicateCounters.length !== 1 ? 's' : ''} found`;
+    }
+    
+    this.elements.duplicateInfo.style.display = "block";
+
+    // Enable remove duplicates button
+    if (this.elements.removeDuplicatesBtn) {
+      this.elements.removeDuplicatesBtn.disabled = false;
+    }
+  }
+
+  removeDuplicates() {
+    if (this.duplicateCounters.length === 0) {
+      this.showMessage("info", "ℹ️ No duplicates to remove");
+      return;
+    }
+
+    const originalCount = this.extractedCounters.length;
+    const seen = new Set();
+    const uniqueCounters = [];
+
+    // Keep only the first occurrence of each counter
+    this.extractedCounters.forEach((counter) => {
+      const nameMatch = counter.match(/name="([^"]+)"/);
+      if (nameMatch) {
+        const name = nameMatch[1];
+        if (!seen.has(name)) {
+          seen.add(name);
+          uniqueCounters.push(counter);
+        }
+      }
+    });
+
+    this.extractedCounters = uniqueCounters;
+    const removedCount = originalCount - uniqueCounters.length;
+
+    // Clear duplicates and update display
+    this.duplicateCounters = [];
+    this.displayDuplicates();
+
+    // Re-display counters
+    const stillHasNaN = this.extractedCounters.some(
+      (counter) => counter.includes("_NaN") || counter.includes("_nan")
+    );
+    this.displayCounters(stillHasNaN, []);
+
+    this.showMessage(
+      "success",
+      `✅ Removed ${removedCount} duplicate counter${removedCount !== 1 ? 's' : ''}!`
+    );
+  }
+
+  processCountersForNaN() {
+    if (!this.videoInfo || this.videoInfo.length === 0) {
+      console.log("No video info available for NaN replacement");
+      return;
+    }
+
+    const successfulVideo = this.videoInfo.find(
+      (video) => video.status === "success" && video.durationSeconds
+    );
+
+    if (!successfulVideo) {
+      console.log("No successful video analysis found");
+      return;
+    }
+
+    const durationSeconds = Math.round(successfulVideo.durationSeconds);
+    let hasChanges = false;
+
+    const counterGroups = new Map();
+
+    this.extractedCounters.forEach((counter, index) => {
+      const nameMatch = counter.match(/name="([^"]+)"/);
+      if (nameMatch) {
+        const fullName = nameMatch[1];
+
+        let baseName = fullName;
+        let suffix = "";
+        let isNaN = false;
+
+        if (/_NaN$/i.test(fullName)) {
+          baseName = fullName.replace(/_NaN$/i, "");
+          suffix = "NaN";
+          isNaN = true;
+        } else if (/_\d+$/.test(fullName)) {
+          const match = fullName.match(/^(.+)_(\d+)$/);
+          if (match) {
+            baseName = match[1];
+            suffix = match[2];
+          }
+        }
+
+        if (!counterGroups.has(baseName)) {
+          counterGroups.set(baseName, {
+            nanCounters: [],
+            numericCounters: [],
+            otherCounters: [],
+          });
+        }
+
+        const group = counterGroups.get(baseName);
+
+        if (isNaN) {
+          group.nanCounters.push({ counter, index, fullName });
+        } else if (/_\d+$/.test(fullName)) {
+          group.numericCounters.push({ counter, index, fullName });
+        } else {
+          group.otherCounters.push({ counter, index, fullName });
+        }
+      }
+    });
+
+    const indicesToRemove = new Set();
+
+    counterGroups.forEach((group, baseName) => {
+      if (group.nanCounters.length > 0 && group.numericCounters.length > 0) {
+        console.log(`Found conflict for ${baseName}: removing NaN versions`);
+        group.nanCounters.forEach((nanItem) => {
+          console.log(`Removing: ${nanItem.fullName}`);
+          indicesToRemove.add(nanItem.index);
+          hasChanges = true;
+        });
+      }
+    });
+
+    const sortedIndices = Array.from(indicesToRemove).sort((a, b) => b - a);
+    sortedIndices.forEach((index) => {
+      this.extractedCounters.splice(index, 1);
+    });
+
+    this.extractedCounters = this.extractedCounters.map((counter) => {
+      if (counter.includes("_NaN") || counter.includes("_nan")) {
+        const nameMatch = counter.match(/name="([^"]+)"/);
+        if (nameMatch) {
+          const fullName = nameMatch[1];
+          const baseName = fullName.replace(/_NaN$|_nan$/i, "");
+
+          if (baseName.includes("vid-length") || baseName.includes("length")) {
+            const updatedCounter = counter.replace(
+              /_NaN|_nan/i,
+              `_${durationSeconds}`
+            );
+            console.log(
+              `Replaced ${fullName} with ${baseName}_${durationSeconds}`
+            );
+            hasChanges = true;
+            return updatedCounter;
+          }
+        }
+      }
+      return counter;
+    });
+
+    if (hasChanges) {
+      // Re-detect duplicates after NaN processing
+      this.detectDuplicates();
+      
+      this.showMessage(
+        "success",
+        `✅ Processed NaN counters with video duration: ${durationSeconds}s`
+      );
+    }
+  }
+
   displayCounters(hasNaN = false, nanCounters = []) {
     const counterHTML = this.extractedCounters.join("");
     this.elements.outputArea.textContent = counterHTML;
 
-    // Update counter info
     this.elements.counterCount.textContent = `Found ${
       this.extractedCounters.length
     } counter${this.extractedCounters.length !== 1 ? "s" : ""}`;
     this.elements.counterInfo.style.display = "block";
 
-    // Show NaN warning if any NaN values were detected
     if (hasNaN) {
       this.elements.nanWarning.style.display = "block";
       this.elements.nanWarning.innerHTML = `
-      <span class="warning-icon">⚠</span>
-      <span class="warning-text">
-        <strong>Warning:</strong> Found counters with "NaN" values. These may cause tracking issues!
-      </span>
-    `;
+        <span class="warning-icon">⚠</span>
+        <span class="warning-text">
+          <strong>Warning:</strong> Found counters with "NaN" values. These may cause tracking issues!
+        </span>
+      `;
     } else {
       this.elements.nanWarning.style.display = "none";
     }
 
-    // Enable copy button only when there are counters
     this.elements.copyBtn.disabled = false;
 
     this.showMessage(
@@ -564,11 +799,24 @@ class GWDExtractorPopup {
 
   clearOutput() {
     this.extractedCounters = [];
+    this.duplicateCounters = [];
     this.elements.outputArea.textContent =
       "Extracted gwd-counter elements will appear here...";
     this.elements.counterInfo.style.display = "none";
     this.elements.nanWarning.style.display = "none";
+    
+    if (this.elements.duplicateWarning) {
+      this.elements.duplicateWarning.style.display = "none";
+    }
+    if (this.elements.duplicateInfo) {
+      this.elements.duplicateInfo.style.display = "none";
+    }
+    
     this.elements.copyBtn.disabled = true;
+    
+    if (this.elements.removeDuplicatesBtn) {
+      this.elements.removeDuplicatesBtn.disabled = true;
+    }
   }
 
   async copyToClipboard() {
@@ -579,14 +827,12 @@ class GWDExtractorPopup {
       await navigator.clipboard.writeText(counterHTML);
       this.showMessage("success", "✅ Copied to clipboard successfully!");
 
-      // Hide success message after 3 seconds
       setTimeout(() => {
         this.hideMessages();
       }, 3000);
     } catch (error) {
       console.error("Copy failed:", error);
 
-      // Fallback method for copying
       try {
         const textArea = document.createElement("textarea");
         textArea.value = this.extractedCounters.join("");
