@@ -6,6 +6,8 @@ class GWDExtractorBackground {
 
   initialize() {
     // Handle extension installation
+
+
     chrome.runtime.onInstalled.addListener((details) => {
       console.log("GWD Counter Extractor installed:", details.reason);
 
@@ -13,6 +15,32 @@ class GWDExtractorBackground {
         this.showWelcomeNotification();
       }
     });
+
+    // Background Service Worker
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'openExtension') {
+    // Open the extension popup
+    chrome.action.openPopup();
+  }
+});
+
+// Update icon badge when on GWD page
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    const url = tab.url.toLowerCase();
+    const isGWD = (url.includes('localhost') || url.includes('127.0.0.1')) &&
+                  (url.includes('preview.html') || url.includes('index.html') || url.endsWith('.html'));
+    
+    if (isGWD) {
+      // Set badge to indicate GWD page
+      chrome.action.setBadgeText({ text: 'GWD', tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: '#4facfe', tabId: tabId });
+    } else {
+      chrome.action.setBadgeText({ text: '', tabId: tabId });
+    }
+  }
+});
+
 
     // Handle messages from popup and content scripts
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

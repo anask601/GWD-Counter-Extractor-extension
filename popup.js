@@ -1,10 +1,9 @@
-// Popup JavaScript for Chrome Extension
 class GWDExtractorPopup {
   constructor() {
     this.currentTab = null;
     this.extractedCounters = [];
     this.videoInfo = [];
-    this.duplicateCounters = []; // Track duplicates
+    this.duplicateCounters = [];
     this.initializeElements();
     this.bindEvents();
     this.loadCurrentTab();
@@ -20,10 +19,12 @@ class GWDExtractorPopup {
       clearBtn: document.getElementById("clearBtn"),
       helpBtn: document.getElementById("helpBtn"),
       removeDuplicatesBtn: document.getElementById("removeDuplicatesBtn"),
+      duplicateButtonGroup: document.getElementById("duplicateButtonGroup"),
       outputArea: document.getElementById("outputArea"),
       videoOutput: document.getElementById("videoOutput"),
       duplicateOutput: document.getElementById("duplicateOutput"),
       successMessage: document.getElementById("successMessage"),
+      infoMessage: document.getElementById("infoMessage"),
       errorMessage: document.getElementById("errorMessage"),
       nanWarning: document.getElementById("nanWarning"),
       duplicateWarning: document.getElementById("duplicateWarning"),
@@ -53,14 +54,13 @@ class GWDExtractorPopup {
     );
     this.elements.clearBtn.addEventListener("click", () => this.clearAll());
     this.elements.helpBtn.addEventListener("click", () => this.openModal());
-    
-    // Add remove duplicates button event listener if it exists
+
     if (this.elements.removeDuplicatesBtn) {
       this.elements.removeDuplicatesBtn.addEventListener("click", () =>
         this.removeDuplicates()
       );
     }
-    
+
     this.elements.modalClose.addEventListener("click", () => this.closeModal());
     this.elements.modalOverlay.addEventListener("click", (e) => {
       if (e.target === this.elements.modalOverlay) {
@@ -68,7 +68,6 @@ class GWDExtractorPopup {
       }
     });
 
-    // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         this.closeModal();
@@ -103,6 +102,93 @@ class GWDExtractorPopup {
       console.error("Error loading current tab:", error);
       this.elements.urlValue.textContent = "Error loading URL";
       this.elements.navigateBtn.disabled = true;
+    }
+  }
+
+  convertToStagingUrl(productionUrl) {
+    return productionUrl.replace(
+      "https://img.medscapestatic.com",
+      "https://img.staging.medscapestatic.com"
+    );
+  }
+
+  async analyzeVideosFromUrls(urls, source = "production") {
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: this.currentTab.id },
+        function: (videoUrls) => {
+          console.log(
+            `=== ${videoUrls.source.toUpperCase()} VIDEO EXTRACTION STARTED ===`
+          );
+          console.log("Video URLs:", videoUrls.urls);
+
+          const videoPromises = videoUrls.urls.map((url, index) => {
+            return new Promise((resolve) => {
+              const tempVideo = document.createElement("video");
+              tempVideo.preload = "metadata";
+              tempVideo.crossOrigin = "anonymous";
+
+              const timeout = setTimeout(() => {
+                resolve({
+                  url: url,
+                  duration: "Unknown (timeout)",
+                  durationSeconds: null,
+                  status: "timeout",
+                  index: index + 1,
+                });
+              }, 15000);
+
+              tempVideo.onloadedmetadata = () => {
+                clearTimeout(timeout);
+                const duration = tempVideo.duration;
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                const formattedDuration = `${minutes}:${seconds
+                  .toString()
+                  .padStart(2, "0")}`;
+
+                resolve({
+                  url: url,
+                  duration: formattedDuration,
+                  durationSeconds: duration,
+                  status: "success",
+                  index: index + 1,
+                });
+              };
+
+              tempVideo.onerror = () => {
+                clearTimeout(timeout);
+                resolve({
+                  url: url,
+                  duration: "Error loading video",
+                  durationSeconds: null,
+                  status: "error",
+                  index: index + 1,
+                });
+              };
+
+              tempVideo.src = url;
+            });
+          });
+
+          return Promise.all(videoPromises).then((results) => {
+            console.log(
+              `=== ${videoUrls.source.toUpperCase()} VIDEO ANALYSIS COMPLETE ===`
+            );
+            console.log("Results:", results);
+            return {
+              videos: results,
+              totalFound: results.length,
+            };
+          });
+        },
+        args: [{ urls, source }],
+      });
+
+      return results[0]?.result || { videos: [], totalFound: 0 };
+    } catch (error) {
+      console.error(`${source} video extraction error:`, error);
+      return { videos: [], totalFound: 0 };
     }
   }
 
@@ -161,116 +247,87 @@ class GWDExtractorPopup {
     }
 
     try {
-      this.showMessage("info", "🎬 Analyzing videos...");
+      this.showMessage("info", "🎬 Analyzing videos from live URL...");
 
-      const results = await chrome.scripting.executeScript({
+      // Step 1: Get all video URLs from the page
+      const videoUrlResults = await chrome.scripting.executeScript({
         target: { tabId: this.currentTab.id },
         function: () => {
-          console.log("=== VIDEO EXTRACTION STARTED ===");
+          const videoUrls = new Set();
+          const videos = document.querySelectorAll("video");
+          const sources = document.querySelectorAll("source");
 
-          const videoPromises = [];
+          videos.forEach((video) => {
+            if (video.src) videoUrls.add(video.src);
+            if (video.currentSrc && video.currentSrc !== video.src) {
+              videoUrls.add(video.currentSrc);
+            }
+          });
 
-          try {
-            const videos = document.querySelectorAll("video");
-            const sources = document.querySelectorAll("source");
-            const videoUrls = new Set();
+          sources.forEach((source) => {
+            if (source.src) videoUrls.add(source.src);
+          });
 
-            videos.forEach((video, index) => {
-              if (video.src) {
-                videoUrls.add(video.src);
-                console.log(`Video ${index + 1} src:`, video.src);
-              }
-
-              if (video.currentSrc && video.currentSrc !== video.src) {
-                videoUrls.add(video.currentSrc);
-                console.log(`Video ${index + 1} currentSrc:`, video.currentSrc);
-              }
-            });
-
-            sources.forEach((source, index) => {
-              if (source.src) {
-                videoUrls.add(source.src);
-                console.log(`Source ${index + 1} src:`, source.src);
-              }
-            });
-
-            const uniqueUrls = Array.from(videoUrls);
-            console.log("Unique video URLs found:", uniqueUrls);
-
-            uniqueUrls.forEach((url, index) => {
-              const promise = new Promise((resolve) => {
-                const tempVideo = document.createElement("video");
-                tempVideo.preload = "metadata";
-                tempVideo.crossOrigin = "anonymous";
-
-                const timeout = setTimeout(() => {
-                  resolve({
-                    url: url,
-                    duration: "Unknown (timeout)",
-                    durationSeconds: null,
-                    status: "timeout",
-                    index: index + 1,
-                  });
-                }, 10000);
-
-                tempVideo.onloadedmetadata = () => {
-                  clearTimeout(timeout);
-                  const duration = tempVideo.duration;
-                  const minutes = Math.floor(duration / 60);
-                  const seconds = Math.floor(duration % 60);
-                  const formattedDuration = `${minutes}:${seconds
-                    .toString()
-                    .padStart(2, "0")}`;
-
-                  resolve({
-                    url: url,
-                    duration: formattedDuration,
-                    durationSeconds: duration,
-                    status: "success",
-                    index: index + 1,
-                  });
-                };
-
-                tempVideo.onerror = () => {
-                  clearTimeout(timeout);
-                  resolve({
-                    url: url,
-                    duration: "Error loading video",
-                    durationSeconds: null,
-                    status: "error",
-                    index: index + 1,
-                  });
-                };
-
-                tempVideo.src = url;
-              });
-
-              videoPromises.push(promise);
-            });
-
-            return Promise.all(videoPromises).then((results) => {
-              console.log("=== VIDEO ANALYSIS COMPLETE ===");
-              console.log("Results:", results);
-              return {
-                videos: results,
-                totalFound: results.length,
-              };
-            });
-          } catch (error) {
-            console.error("Error in video extraction:", error);
-            return {
-              videos: [],
-              totalFound: 0,
-              error: error.message,
-            };
-          }
+          return Array.from(videoUrls);
         },
       });
 
-      const result = results[0]?.result || { videos: [], totalFound: 0 };
+      const productionUrls = videoUrlResults[0]?.result || [];
+
+      if (productionUrls.length === 0) {
+        this.showMessage("error", "❌ No video sources found on this page");
+        this.clearVideoOutput();
+        return;
+      }
+
+      // Step 2: Try analyzing from production URLs
+      let result = await this.analyzeVideosFromUrls(
+        productionUrls,
+        "production"
+      );
+
+      // Step 3: Check if production failed
+      const hasErrors = result.videos.some(
+        (v) => v.status === "error" || v.status === "timeout"
+      );
+      const allFailed = result.videos.every(
+        (v) => v.status === "error" || v.status === "timeout"
+      );
+
+      // Step 4: If production failed, try staging
+      if (allFailed || hasErrors) {
+        this.showMessage("info", "⚠️ Live URL failed, trying staging URL...");
+
+        const stagingUrls = productionUrls.map((url) =>
+          this.convertToStagingUrl(url)
+        );
+        const stagingResult = await this.analyzeVideosFromUrls(
+          stagingUrls,
+          "staging"
+        );
+
+        // Use staging results if they're better
+        const stagingSuccessCount = stagingResult.videos.filter(
+          (v) => v.status === "success"
+        ).length;
+        const productionSuccessCount = result.videos.filter(
+          (v) => v.status === "success"
+        ).length;
+
+        if (stagingSuccessCount > productionSuccessCount) {
+          result = stagingResult;
+          this.showMessage(
+            "success",
+            "✅ Successfully analyzed from staging URL!"
+          );
+        }
+      }
 
       if (!result.videos || result.videos.length === 0) {
-        this.showMessage("error", "❌ No video sources found on this page");
+        this.showMessage(
+          "error",
+          "❌ Failed to analyze videos from both live and staging URLs"
+        );
         this.clearVideoOutput();
         return;
       }
@@ -284,8 +341,7 @@ class GWDExtractorPopup {
         const stillHasNaN = this.extractedCounters.some(
           (counter) => counter.includes("_NaN") || counter.includes("_nan")
         );
-        
-        // Re-detect duplicates after processing
+
         this.detectDuplicates();
         this.displayCounters(stillHasNaN, []);
       }
@@ -299,7 +355,10 @@ class GWDExtractorPopup {
   }
 
   displayVideoInfo() {
-    let videoOutput = "=== VIDEO ANALYSIS RESULTS ===\n\n";
+    const source = this.videoInfo[0]?.url.includes("staging")
+      ? "STAGING"
+      : "PRODUCTION";
+    let videoOutput = `=== VIDEO ANALYSIS RESULTS (${source}) ===\n\n`;
 
     this.videoInfo.forEach((video) => {
       videoOutput += `Video ${video.index}:\n`;
@@ -307,7 +366,9 @@ class GWDExtractorPopup {
       videoOutput += `Duration: ${video.duration}\n`;
       videoOutput += `Status: ${video.status}\n`;
       if (video.durationSeconds) {
-        videoOutput += `Duration (seconds): ${video.durationSeconds.toFixed(2)}\n`;
+        videoOutput += `Duration (seconds): ${video.durationSeconds.toFixed(
+          2
+        )}\n`;
       }
       videoOutput += "\n";
     });
@@ -321,14 +382,14 @@ class GWDExtractorPopup {
       this.videoInfo.length
     } video${
       this.videoInfo.length !== 1 ? "s" : ""
-    } (${successCount} analyzed successfully)`;
+    } (${successCount} analyzed successfully from ${source})`;
     this.elements.videoInfo.style.display = "block";
 
     this.showMessage(
       "success",
       `✅ Analyzed ${this.videoInfo.length} video source${
         this.videoInfo.length !== 1 ? "s" : ""
-      }!`
+      } from ${source}!`
     );
   }
 
@@ -515,10 +576,8 @@ class GWDExtractorPopup {
 
       this.extractedCounters = result.counters;
 
-      // Detect duplicates FIRST
       this.detectDuplicates();
 
-      // Then process counters for NaN handling
       this.processCountersForNaN();
 
       const stillHasNaN = this.extractedCounters.some(
@@ -539,7 +598,6 @@ class GWDExtractorPopup {
     const counterMap = new Map();
     this.duplicateCounters = [];
 
-    // Count occurrences of each counter name
     this.extractedCounters.forEach((counter) => {
       const nameMatch = counter.match(/name="([^"]+)"/);
       if (nameMatch) {
@@ -552,7 +610,6 @@ class GWDExtractorPopup {
       }
     });
 
-    // Find duplicates
     counterMap.forEach((count, name) => {
       if (count > 1) {
         this.duplicateCounters.push({
@@ -564,34 +621,34 @@ class GWDExtractorPopup {
 
     console.log("Duplicate counters detected:", this.duplicateCounters);
 
-    // Display duplicate information
     this.displayDuplicates();
   }
 
   displayDuplicates() {
     if (!this.elements.duplicateWarning || !this.elements.duplicateInfo) {
-      return; // Elements don't exist in HTML yet
+      return;
     }
 
     if (this.duplicateCounters.length === 0) {
       this.elements.duplicateWarning.style.display = "none";
       this.elements.duplicateInfo.style.display = "none";
+      this.elements.duplicateButtonGroup.style.display = "none";
       if (this.elements.removeDuplicatesBtn) {
         this.elements.removeDuplicatesBtn.disabled = true;
       }
       return;
     }
 
-    // Show duplicate warning
     this.elements.duplicateWarning.style.display = "block";
     this.elements.duplicateWarning.innerHTML = `
       <span class="warning-icon">🔄</span>
       <span class="warning-text">
-        <strong>Duplicates Detected:</strong> Found ${this.duplicateCounters.length} duplicate counter${this.duplicateCounters.length !== 1 ? 's' : ''}!
+        <strong>Duplicates Detected:</strong> Found ${
+          this.duplicateCounters.length
+        } duplicate counter${this.duplicateCounters.length !== 1 ? "s" : ""}!
       </span>
     `;
 
-    // Show duplicate details
     let duplicateOutput = "=== DUPLICATE COUNTERS ===\n\n";
     this.duplicateCounters.forEach((dup) => {
       duplicateOutput += `"${dup.name}" appears ${dup.count} times\n`;
@@ -601,14 +658,16 @@ class GWDExtractorPopup {
     if (this.elements.duplicateOutput) {
       this.elements.duplicateOutput.textContent = duplicateOutput;
     }
-    
-    if (this.elements.duplicateCount) {
-      this.elements.duplicateCount.textContent = `${this.duplicateCounters.length} duplicate${this.duplicateCounters.length !== 1 ? 's' : ''} found`;
-    }
-    
-    this.elements.duplicateInfo.style.display = "block";
 
-    // Enable remove duplicates button
+    if (this.elements.duplicateCount) {
+      this.elements.duplicateCount.textContent = `${
+        this.duplicateCounters.length
+      } duplicate${this.duplicateCounters.length !== 1 ? "s" : ""} found`;
+    }
+
+    this.elements.duplicateInfo.style.display = "block";
+    this.elements.duplicateButtonGroup.style.display = "block";
+
     if (this.elements.removeDuplicatesBtn) {
       this.elements.removeDuplicatesBtn.disabled = false;
     }
@@ -624,7 +683,6 @@ class GWDExtractorPopup {
     const seen = new Set();
     const uniqueCounters = [];
 
-    // Keep only the first occurrence of each counter
     this.extractedCounters.forEach((counter) => {
       const nameMatch = counter.match(/name="([^"]+)"/);
       if (nameMatch) {
@@ -639,11 +697,9 @@ class GWDExtractorPopup {
     this.extractedCounters = uniqueCounters;
     const removedCount = originalCount - uniqueCounters.length;
 
-    // Clear duplicates and update display
     this.duplicateCounters = [];
     this.displayDuplicates();
 
-    // Re-display counters
     const stillHasNaN = this.extractedCounters.some(
       (counter) => counter.includes("_NaN") || counter.includes("_nan")
     );
@@ -651,7 +707,9 @@ class GWDExtractorPopup {
 
     this.showMessage(
       "success",
-      `✅ Removed ${removedCount} duplicate counter${removedCount !== 1 ? 's' : ''}!`
+      `✅ Removed ${removedCount} duplicate counter${
+        removedCount !== 1 ? "s" : ""
+      }!`
     );
   }
 
@@ -758,9 +816,8 @@ class GWDExtractorPopup {
     });
 
     if (hasChanges) {
-      // Re-detect duplicates after NaN processing
       this.detectDuplicates();
-      
+
       this.showMessage(
         "success",
         `✅ Processed NaN counters with video duration: ${durationSeconds}s`
@@ -804,16 +861,19 @@ class GWDExtractorPopup {
       "Extracted gwd-counter elements will appear here...";
     this.elements.counterInfo.style.display = "none";
     this.elements.nanWarning.style.display = "none";
-    
+
     if (this.elements.duplicateWarning) {
       this.elements.duplicateWarning.style.display = "none";
     }
     if (this.elements.duplicateInfo) {
       this.elements.duplicateInfo.style.display = "none";
     }
-    
+    if (this.elements.duplicateButtonGroup) {
+      this.elements.duplicateButtonGroup.style.display = "none";
+    }
+
     this.elements.copyBtn.disabled = true;
-    
+
     if (this.elements.removeDuplicatesBtn) {
       this.elements.removeDuplicatesBtn.disabled = true;
     }
@@ -857,9 +917,12 @@ class GWDExtractorPopup {
   showMessage(type, message) {
     this.hideMessages();
 
-    if (type === "success" || type === "info") {
+    if (type === "success") {
       this.elements.successMessage.textContent = message;
       this.elements.successMessage.style.display = "block";
+    } else if (type === "info") {
+      this.elements.infoMessage.textContent = message;
+      this.elements.infoMessage.style.display = "block";
     } else if (type === "error") {
       this.elements.errorMessage.textContent = message;
       this.elements.errorMessage.style.display = "block";
@@ -868,6 +931,7 @@ class GWDExtractorPopup {
 
   hideMessages() {
     this.elements.successMessage.style.display = "none";
+    this.elements.infoMessage.style.display = "none";
     this.elements.errorMessage.style.display = "none";
   }
 
@@ -880,7 +944,6 @@ class GWDExtractorPopup {
   }
 }
 
-// Initialize the popup when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   new GWDExtractorPopup();
 });

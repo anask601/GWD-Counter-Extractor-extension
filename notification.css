@@ -1,0 +1,130 @@
+.gwd-notification {
+  position: fixed;
+  top: 20px;
+  right: -400px;
+  width: 360px;
+  z-index: 999999;
+  transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.gwd-notification-show {
+  right: 20px;
+}
+
+.gwd-notification-hide {
+  right: -400px;
+}
+
+.gwd-notification-content {
+  background: linear-gradient(135deg, #ff9f1c 0%, #c9184a 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.gwd-notification-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gwd-notification-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.gwd-notification-title {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.gwd-notification-title strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.gwd-notification-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.gwd-notification-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.gwd-notification-message {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  opacity: 0.95;
+}
+
+.gwd-notification-message strong {
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.gwd-notification-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.gwd-btn-primary,
+.gwd-btn-secondary {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.gwd-btn-primary {
+  background: white;
+  color: #667eea;
+}
+
+.gwd-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
+}
+
+.gwd-btn-secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.gwd-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .gwd-notification {
+    width: calc(100% - 40px);
+    right: -100%;
+  }
+  
+  .gwd-notification-show {
+    right: 20px;
+  }
+}

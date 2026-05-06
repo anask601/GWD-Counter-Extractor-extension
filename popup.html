@@ -33,15 +33,21 @@
           <div class="button-group">
             <button class="video-btn" id="videoBtn">🎬 Analyze Videos</button>
           </div>
+
+          <div class="button-group" style="display: none;" id="duplicateButtonGroup">
+            <button id="removeDuplicatesBtn" class="remove-duplicates-btn" disabled>
+              🗑️ Remove Duplicates
+            </button>
+          </div>
         </div>
 
         <div class="status-section">
-          <div
-            class="success-message"
-            id="successMessage"
-            style="display: none"
-          >
+          <div class="success-message" id="successMessage" style="display: none">
             ✅ Successfully extracted data!
+          </div>
+
+          <div class="info-message" id="infoMessage" style="display: none">
+            ℹ️ Processing...
           </div>
 
           <div class="error-message" id="errorMessage" style="display: none">
@@ -52,6 +58,13 @@
             ⚠️ <strong>Warning:</strong> Found counters with "NaN" values!
           </div>
 
+          <div id="duplicateWarning" class="duplicate-warning" style="display: none;">
+            <span class="warning-icon">🔄</span>
+            <span class="warning-text">
+              <strong>Duplicates Detected!</strong>
+            </span>
+          </div>
+
           <div class="counter-info" id="counterInfo" style="display: none">
             <div class="counter-count" id="counterCount">Found 0 counters</div>
           </div>
@@ -59,30 +72,15 @@
           <div class="success-message" id="videoInfo" style="display: none">
             <div class="video-count" id="videoCount">Found 0 videos</div>
           </div>
+
+          <div id="duplicateInfo" class="duplicate-info" style="display: none;">
+            <div class="info-header">
+              <span class="info-icon">🔄</span>
+              <span id="duplicateCount" class="duplicate-count">0 duplicates</span>
+            </div>
+            <pre id="duplicateOutput" class="duplicate-output">Duplicate analysis will appear here...</pre>
+          </div>
         </div>
-
-        <!-- Add this after the NaN warning div -->
-<div id="duplicateWarning" class="duplicate-warning" style="display: none;">
-  <span class="warning-icon">🔄</span>
-  <span class="warning-text">
-    <strong>Duplicates Detected!</strong>
-  </span>
-</div>
-
-<!-- Add this button in your button group section (after videoBtn) -->
-<button id="removeDuplicatesBtn" class="remove-duplicates-btn" disabled>
-  🗑️ Remove Duplicates
-</button>
-
-<!-- Add this after the videoInfo section -->
-<div id="duplicateInfo" class="duplicate-info" style="display: none;">
-  <div class="info-header">
-    <span class="info-icon">🔄</span>
-    <span id="duplicateCount" class="duplicate-count">0 duplicates</span>
-  </div>
-  <pre id="duplicateOutput" class="duplicate-output">Duplicate analysis will appear here...</pre>
-</div>
-
 
         <div class="output-section">
           <div class="output-header">
@@ -109,7 +107,6 @@
       </div>
     </div>
 
-    <!-- Help Modal -->
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal">
         <div class="modal-header">
@@ -142,8 +139,16 @@
           </div>
 
           <div class="step">
-            <h3><span class="step-number">4</span>Copy Results</h3>
-            <p>Use "📋 Copy" to copy both counters</p>
+            <h3><span class="step-number">4</span>Automatic Fallback</h3>
+            <p>
+              If live video analysis fails, the system automatically tries staging 
+              URL - no extra steps needed!
+            </p>
+          </div>
+
+          <div class="step">
+            <h3><span class="step-number">5</span>Copy Results</h3>
+            <p>Use "📋 Copy" to copy the extracted counters</p>
           </div>
 
           <div class="tips">
@@ -154,8 +159,10 @@
                 issues
               </li>
               <li>
-                🎬 Video analysis extracts URLs and durations from video/source
-                elements
+                🎬 Video analysis automatically tries staging if live URLs fail
+              </li>
+              <li>
+                🔧 Staging fallback is automatic - no manual intervention needed
               </li>
               <li>
                 🔗 Copy Index URL converts preview.html to index.html
@@ -170,6 +177,7 @@
         </div>
       </div>
     </div>
+
 
     <script src="popup.js"></script>
   </body>

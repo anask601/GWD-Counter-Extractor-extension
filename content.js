@@ -1,122 +1,97 @@
-// Content script for GWD Counter Extractor
-class GWDCounterContentScript {
-  constructor() {
-    this.isInjected = false;
-    this.initialize();
+// Content Script - Runs on localhost pages
+(function() {
+  'use strict';
+
+  // Check if this is a GWD page
+  function isGWDPage() {
+    const url = window.location.href.toLowerCase();
+    return (url.includes('localhost') || url.includes('127.0.0.1')) &&
+           (url.includes('preview.html') || url.includes('index.html') || url.endsWith('.html'));
   }
 
-  initialize() {
-    // Prevent multiple injections
-    if (window.gwdExtractorInjected) return;
-    window.gwdExtractorInjected = true;
+  // Check if notification has been shown
+  function shouldShowNotification() {
+    const shown = sessionStorage.getItem('gwdNotificationShown');
+    return !shown;
+  }
 
-    // Listen for messages from popup
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === "extractCounters") {
-        const counters = this.extractCounters();
-        sendResponse({ counters });
-      } else if (request.action === "getPageInfo") {
-        sendResponse({
-          url: window.location.href,
-          title: document.title,
-          hasCounters: this.hasGWDCounters(),
-        });
-      }
+  // Create and show notification
+  function showGWDNotification() {
+    // Check if already exists
+    if (document.getElementById('gwd-test-reminder')) {
+      return;
+    }
+
+    // Create notification container
+    const notification = document.createElement('div');
+    notification.id = 'gwd-test-reminder';
+    notification.className = 'gwd-notification';
+    notification.innerHTML = `
+      <div class="gwd-notification-content">
+        <div class="gwd-notification-header">
+          <div class="gwd-notification-icon">🧪</div>
+          <div class="gwd-notification-title">
+            <strong>GWD Testing Reminder</strong>
+            <button class="gwd-notification-close" id="gwdNotificationClose">×</button>
+          </div>
+        </div>
+        <div class="gwd-notification-message">
+          Remember to <strong>test all GWD counters thoroughly</strong> before deployment!
+          <br>Use the extension to extract and verify counters.
+        </div>
+        <div class="gwd-notification-actions">
+          <button class="gwd-btn-primary" id="gwdOpenExtension">Open Extension</button>
+          <button class="gwd-btn-secondary" id="gwdDismiss">Got it</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Show notification with animation
+    setTimeout(() => {
+      notification.classList.add('gwd-notification-show');
+    }, 100);
+
+    // Event listeners
+    document.getElementById('gwdNotificationClose').addEventListener('click', dismissNotification);
+    document.getElementById('gwdDismiss').addEventListener('click', dismissNotification);
+    document.getElementById('gwdOpenExtension').addEventListener('click', () => {
+      // Send message to background script to open extension
+      chrome.runtime.sendMessage({ action: 'openExtension' });
+      dismissNotification();
     });
 
-    console.log("GWD Counter Extractor content script loaded");
-  }
-
-  extractCounters() {
-    const counters = [];
-
-    try {
-      // Method 1: Look for gwd-counter elements
-      const gwdCounters = document.querySelectorAll("gwd-counter");
-      gwdCounters.forEach((counter) => {
-        counters.push(counter.outerHTML);
-      });
-
-      // Method 2: Check body element for counter attributes
-      const bodyElement = document.querySelector("body");
-      if (bodyElement) {
-        // Look for counter-related attributes in body
-        const attributes = ["name", "type", "duration", "increment"];
-        const hasCounterAttrs = attributes.some((attr) =>
-          bodyElement.hasAttribute(attr)
-        );
-
-        if (hasCounterAttrs && bodyElement.hasAttribute("name")) {
-          let counterHtml = `<gwd-counter name="${bodyElement.getAttribute(
-            "name"
-          )}"`;
-
-          // Add other relevant attributes
-          attributes.slice(1).forEach((attr) => {
-            if (bodyElement.hasAttribute(attr)) {
-              counterHtml += ` ${attr}="${bodyElement.getAttribute(attr)}"`;
-            }
-          });
-
-          counterHtml += "></gwd-counter>";
-          counters.push(counterHtml);
-        }
-      }
-
-      // Method 3: Look for any elements with gwd-counter-like attributes
-      const elementsWithCounterAttrs = document.querySelectorAll(
-        '[name*="counter"], [name*="vid"], [name*="cta"], [name*="isi"]'
-      );
-      elementsWithCounterAttrs.forEach((element) => {
-        if (
-          element.tagName.toLowerCase() !== "gwd-counter" &&
-          element.tagName.toLowerCase() !== "body"
-        ) {
-          const name = element.getAttribute("name");
-          if (name) {
-            counters.push(`<gwd-counter name="${name}"></gwd-counter>`);
-          }
-        }
-      });
-
-      console.log(`Found ${counters.length} counter elements:`, counters);
-      return counters;
-    } catch (error) {
-      console.error("Error extracting counters:", error);
-      return [];
-    }
-  }
-
-  hasGWDCounters() {
-    const gwdCounters = document.querySelectorAll("gwd-counter");
-    const bodyWithCounterAttrs = document.querySelector("body[name]");
-    const elementsWithCounterAttrs = document.querySelectorAll(
-      '[name*="counter"], [name*="vid"], [name*="cta"], [name*="isi"]'
-    );
-
-    return (
-      gwdCounters.length > 0 ||
-      bodyWithCounterAttrs ||
-      elementsWithCounterAttrs.length > 0
-    );
-  }
-
-  // Helper method to highlight elements (for debugging)
-  highlightCounters() {
-    const style = document.createElement("style");
-    style.textContent = `
-      gwd-counter, [name*="counter"], [name*="vid"], [name*="cta"], [name*="isi"] {
-        outline: 2px solid #ff0000 !important;
-        background: rgba(255, 0, 0, 0.1) !important;
-      }
-    `;
-    document.head.appendChild(style);
-
+    // Auto-dismiss after 15 seconds
     setTimeout(() => {
-      document.head.removeChild(style);
-    }, 5000);
+      dismissNotification();
+    }, 15000);
   }
-}
 
-// Initialize content script
-new GWDCounterContentScript();
+  function dismissNotification() {
+    const notification = document.getElementById('gwd-test-reminder');
+    if (notification) {
+      notification.classList.remove('gwd-notification-show');
+      notification.classList.add('gwd-notification-hide');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }
+    sessionStorage.setItem('gwdNotificationShown', 'true');
+  }
+
+  // Initialize
+  if (isGWDPage() && shouldShowNotification()) {
+    // Wait a bit for page to load
+    setTimeout(() => {
+      showGWDNotification();
+    }, 1500);
+  }
+
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'checkGWDPage') {
+      sendResponse({ isGWD: isGWDPage() });
+    }
+  });
+})();

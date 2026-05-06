@@ -6,9 +6,7 @@
 
 body {
   width: 400px;
-  min-height: 600px;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .container {
@@ -160,6 +158,16 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+.info-message {
+  background: #d1ecf1;
+  color: #0c5460;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 4px solid #17a2b8;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
 .error-message {
   background: #f8d7da;
   color: #721c24;
@@ -275,7 +283,103 @@ button:disabled {
   gap: 10px;
 }
 
-/* Modal Styles */
+.duplicate-warning {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  color: #856404;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  border: 1px solid #ffc107;
+  border-left: 5px solid #ffc107;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+  z-index: 10;
+  margin-bottom: 10px;
+  animation: duplicateWarningSlide 0.4s ease-out;
+}
+
+.duplicate-warning .warning-icon {
+  color: #ffc107;
+  font-size: 1.3em;
+  font-weight: bold;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.duplicate-warning .warning-text {
+  flex: 1;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.duplicate-warning .warning-text strong {
+  font-weight: 700;
+  color: #8b5a00;
+}
+
+.duplicate-info {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  margin-bottom: 10px;
+}
+
+.duplicate-count {
+  font-weight: 600;
+  color: #ffc107;
+  font-size: 0.95em;
+}
+
+.duplicate-output {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #fff3cd;
+  border-radius: 6px;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  font-size: 11px;
+  background: #fffbf0;
+  resize: none;
+  word-wrap: break-word;
+  overflow-y: auto;
+  color: #856404;
+  max-height: 150px;
+  margin-top: 8px;
+}
+
+.remove-duplicates-btn {
+  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+  color: #000;
+  font-weight: 700;
+}
+
+.remove-duplicates-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.3);
+}
+
+.remove-duplicates-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.info-icon {
+  font-size: 1.2em;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -400,7 +504,6 @@ button:disabled {
   line-height: 1.3;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -419,7 +522,6 @@ button:disabled {
   background: #a8a8a8;
 }
 
-/* Animation keyframes */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -444,7 +546,6 @@ button:disabled {
   animation: slideIn 0.3s ease;
 }
 
-/* Animation for NaN warning */
 @keyframes nanWarningSlide {
   from {
     transform: translateY(-10px);
@@ -460,96 +561,6 @@ button:disabled {
   animation: nanWarningSlide 0.4s ease-out;
 }
 
-/* Duplicate Warning Styles */
-.duplicate-warning {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-  color: #856404;
-  padding: 14px 16px;
-  border-radius: 8px;
-  font-size: 0.9em;
-  border: 1px solid #ffc107;
-  border-left: 5px solid #ffc107;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
-  z-index: 10;
-  margin-bottom: 10px;
-  animation: duplicateWarningSlide 0.4s ease-out;
-}
-
-.duplicate-warning .warning-icon {
-  color: #ffc107;
-  font-size: 1.3em;
-  font-weight: bold;
-  flex-shrink: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.duplicate-warning .warning-text {
-  flex: 1;
-  line-height: 1.4;
-  font-weight: 500;
-}
-
-.duplicate-warning .warning-text strong {
-  font-weight: 700;
-  color: #8b5a00;
-}
-
-/* Duplicate Info Box */
-.duplicate-info {
-  background: #f8f9fa;
-  padding: 10px;
-  border-radius: 6px;
-  border-left: 4px solid #ffc107;
-  margin-bottom: 10px;
-}
-
-.duplicate-count {
-  font-weight: 600;
-  color: #ffc107;
-  font-size: 0.95em;
-}
-
-.duplicate-output {
-  width: 100%;
-  padding: 10px;
-  border: 2px solid #fff3cd;
-  border-radius: 6px;
-  font-family: "Courier New", monospace;
-  font-weight: 700;
-  font-size: 11px;
-  background: #fffbf0;
-  resize: none;
-  word-wrap: break-word;
-  overflow-y: auto;
-  color: #856404;
-  max-height: 150px;
-  margin-top: 8px;
-}
-
-/* Remove Duplicates Button */
-.remove-duplicates-btn {
-  background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-  color: #000;
-  font-weight: 700;
-}
-
-.remove-duplicates-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.3);
-}
-
-.remove-duplicates-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Animation for duplicate warning */
 @keyframes duplicateWarningSlide {
   from {
     transform: translateY(-10px);
@@ -559,16 +570,4 @@ button:disabled {
     transform: translateY(0);
     opacity: 1;
   }
-}
-
-/* Info header for duplicate section */
-.info-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.info-icon {
-  font-size: 1.2em;
 }
